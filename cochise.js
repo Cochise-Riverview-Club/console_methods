@@ -13,7 +13,7 @@ function getProductBookings(){
 	lastDate.setMonth(lastDate.getMonth()+6);
   	const productIds = [4354962456672,4482396389472,4482398355552]
   
-  	const apiEndpoint = `https://cochiseclub.bookthatapp.com/availability?format=json&start=` + formatApiDate(firstDate) + `&end=` + formatApiDate(lastDate) + `&products=` + productIds.toString()
+  	const apiEndpoint = `https://` + bta.base + `/availability?format=json&start=` + formatApiDate(firstDate) + `&end=` + formatApiDate(lastDate) + `&products=` + productIds.toString()
     
     
     jQ.getJSON(apiEndpoint, function (data) {gatherBookingsAndReservations(data)})
