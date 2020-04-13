@@ -8,25 +8,28 @@ let reservations;
 let blackouts = [];
 let court1 = {
   title: 'Court 1',
+  id: 4354962456672,
   bookings: []};
 let court2 = {
   title: 'Court 2',
+  id: 4482396389472 ,
   bookings: []};
 let court3 = {
   title: 'Court 3',
+  id: 4482398355552,
   bookings: []};
+const courts = [court1, court2, court3]
 
 function getProductBookings(){
-	const firstDate = new Date()
-	let lastDate = new Date()
-    const daysToShowInTheFuture = 10;
-	lastDate.setDate(lastDate.getDate()+daysToShowInTheFuture);
-  	const productIds = [4354962456672,4482396389472,4482398355552]
-  
-  	const apiEndpoint = `https://cochiseclub.bookthatapp.com/availability?format=json&start=` + formatApiDate(firstDate) + `&end=` + formatApiDate(lastDate) + `&products=` + productIds.toString()
-    
-    
-    jQ.getJSON(apiEndpoint, function (data) {gatherBookingsAndReservations(data)})
+  const firstDate = new Date()
+  let lastDate = new Date()
+  const daysToShowInTheFuture = 10;
+  lastDate.setDate(lastDate.getDate()+daysToShowInTheFuture);
+  const productIds = courts.map(court => court.id)
+  const apiEndpoint = `https://cochiseclub.bookthatapp.com/availability?format=json&start=` + formatApiDate(firstDate) + `&end=` + formatApiDate(lastDate) + `&products=` + productIds.toString()
+
+
+  jQ.getJSON(apiEndpoint, function (data) {gatherBookingsAndReservations(data)})
 };
 
 function formatApiDate(date){
@@ -37,7 +40,6 @@ function gatherBookingsAndReservations(data) {
   reservations = data
   destructBlackouts(reservations.blackouts)
   destructProducts(reservations.products)
-  courts = [court1, court2, court3]
   courts.forEach(court => sortCourt(court))
   const showReservationsElement = document.querySelector('.add-reservations');
   if (showReservationsElement === null) {
