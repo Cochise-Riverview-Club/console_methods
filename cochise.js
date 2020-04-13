@@ -1,4 +1,3 @@
-
 (async() => {
 	while(!window.hasOwnProperty("bta")) // define the condition as you like
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -6,14 +5,25 @@
 })();
 
 let reservations;
+let blackouts = [];
+let court1 = {
+  title: 'Court 1',
+  bookings: []};
+let court2 = {
+  title: 'Court 2',
+  bookings: []};
+let court3 = {
+  title: 'Court 3',
+  bookings: []};
 
 function getProductBookings(){
 	const firstDate = new Date()
 	let lastDate = new Date()
-	lastDate.setMonth(lastDate.getMonth()+6);
+    const daysToShowInTheFuture = 10;
+	lastDate.setDate(lastDate.getDate()+daysToShowInTheFuture);
   	const productIds = [4354962456672,4482396389472,4482398355552]
   
-  	const apiEndpoint = `https://` + bta.base + `/availability?format=json&start=` + formatApiDate(firstDate) + `&end=` + formatApiDate(lastDate) + `&products=` + productIds.toString()
+  	const apiEndpoint = `https://cochiseclub.bookthatapp.com/availability?format=json&start=` + formatApiDate(firstDate) + `&end=` + formatApiDate(lastDate) + `&products=` + productIds.toString()
     
     
     jQ.getJSON(apiEndpoint, function (data) {gatherBookingsAndReservations(data)})
@@ -25,45 +35,28 @@ function formatApiDate(date){
 
 function gatherBookingsAndReservations(data) {
   reservations = data
+  destructBlackouts(reservations.blackouts)
+  destructProducts(reservations.products)
+  courts = [court1, court2, court3]
+  courts.forEach(court => sortCourt(court))
   const showReservationsElement = document.querySelector('.add-reservations');
-  console.log(showReservationsElement);
   if (showReservationsElement === null) {
   	return null
   }
   const showProductReservationsElement = document.querySelector('.single-product-reservation');
-  console.log(showProductReservationsElement)
-  reservations.products.forEach(product => addProductReservationsToPage(product, showReservationsElement, showProductReservationsElement))
+//   reservations.products.forEach(product => addProductReservationsToPage(product, showReservationsElement, showProductReservationsElement))
+  courts.forEach(court => addCourtToPage(court, showReservationsElement, showProductReservationsElement))
   showProductReservationsElement.remove();
   showReservationsElement.classList.remove("hidden");
 };
 
-function addProductReservationsToPage(product, productsElement, productElement){
-  console.log(productElement);
-  const productElements = document.querySelectorAll('.single-product-reservation')
-  newProductElement = productElement.cloneNode(true)
-  productsElement.appendChild(newProductElement)
-  const productTitleElement = newProductElement.querySelector('.single-product-title');
-  
-  productTitleElement.innerText = product.title;
-  product.bookings.forEach(booking => addBookingToPage(booking, productElement));
-};
-
-function addBookingToPage(booking, productElement){
+function addNoBookingToPage(productElement){
   const bookingElement = document.createElement('p')
-  const startDate = createBookingDate(booking.start);
-  const endDate = createBookingDate(booking.end);
-//   let startDateString = booking.start.join();
-//   console.log(startDateString);
-//   startDateString = '2020,4,5,10,30'
-//   console.log(startDateString);
-//   const startDate = new Date(startDateString);
-  console.log(startDate);
-  bookingElement.innerText = dateToString(startDate, true) + '-' + dateToString(endDate);
+  bookingElement.innerText = 'No current reservations';
   productElement.appendChild(bookingElement);
 };
 
 function createBookingDate(dateArray){
-  console.log(dateArray)
   let theDate = new Date();
   theDate.setFullYear(dateArray[0]);
   theDate.setMonth(dateArray[1] - 1);
@@ -71,21 +64,87 @@ function createBookingDate(dateArray){
   theDate.setHours(dateArray[3]);
   theDate.setMinutes(dateArray[4]);
   theDate.setSeconds(dateArray[5]);
-  console.log('hhhhhhh' + theDate)
   return theDate
 }
 
 function dateToString(date, start = false){
-  stringDate = appendLeadingZeroes(date.getHours()) + ':' + appendLeadingZeroes(date.getMinutes())
+  //bta includes moment.js library - use that for formatting
+  let stringDate = moment(date).format('LT')
   if(start === true){
-  	stringDate = (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear() + ': ' + stringDate
+  	stringDate = moment(date).format('ll') + ': ' + stringDate
   }
   return  stringDate
 }
 
-function appendLeadingZeroes(n){
-  if(n <= 9){
-    return "0" + n;
+
+function addCourtBookingToPage(booking, productElement){
+  const bookingElement = document.createElement('p')
+  const startDate = createBookingDate(booking.start);
+  const endDate = createBookingDate(booking.end);
+  let bookingStringToDisplay = dateToString(startDate, true) + '-' + dateToString(endDate);
+  if(booking.productCategory === 'Admin'){
+    bookingStringToDisplay += '*'
   }
-  return n
+  bookingElement.innerText = bookingStringToDisplay;
+  productElement.appendChild(bookingElement);
+};
+
+function addCourtToPage(court, productsElement, productElement){
+  newProductElement = productElement.cloneNode(true)
+  productsElement.appendChild(newProductElement)
+  const productTitleElement = newProductElement.querySelector('.single-product-title');
+  
+  productTitleElement.innerText = court.title;
+  if(court.bookings.length === 0){    
+  	addNoBookingToPage(newProductElement)
+  }
+  court.bookings.forEach(booking => addCourtBookingToPage(booking, newProductElement));  
+};
+
+function destructProducts(products){
+  products.forEach(product => destructProduct(product))
+}
+function destructProduct(product){
+  product.bookings.forEach(booking => structuredReservation('Member', product.id, product.title, booking.start, booking.end))
+}
+
+function destructBlackouts(blackouts){
+	blackouts.forEach(blackout => destructBlackout(blackout))
+}
+
+function destructBlackout(blackout){
+	blackout.products.forEach(product => structuredReservation('Admin', product.externalProductId, product.title, blackout.start, blackout.end))
+}
+
+function structuredReservation(category, productId, productTitle, start, end){
+  const newObject = {
+    productCategory: category,
+    productId: productId,
+    productTitle: productTitle,
+    start: start,
+    end: end,
+    startString: start.join('')
+  }
+  blackouts.push(newObject)
+  pushReservationToCourt(newObject)
+}
+
+function pushReservationToCourt(product){
+  console.log(product);
+  if(product.productId === 4482398355552 ){
+    court3.bookings.push(product)
+    return
+  }
+  if(product.productId === 4482396389472  ){
+    court2.bookings.push(product)
+    return
+  }
+  if(product.productId === 4354962456672  ){
+    court1.bookings.push(product)
+    return
+  }
+}
+
+function sortCourt(court){
+  court.bookings.sort((a, b) => a.startString.localeCompare(b.startString));
 }
